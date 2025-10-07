@@ -590,14 +590,32 @@
             try {
                 showLoading(true);
                 
-                // Create schedule in database
+                // Create schedule in database with proper timezone conversion
+                const scheduleDateTime = `${formData.scheduleDate}T${formData.scheduleTime}:00`;
+                const userTimezone = formData.timezone || 'America/New_York';
+                
+                // Convert New York time to UTC for storage
+                let utcTime;
+                if (userTimezone === 'America/New_York') {
+                    // Create a date object assuming the time is in New York timezone
+                    const nyDateTime = new Date(scheduleDateTime);
+                    // Convert to UTC by adding the timezone offset
+                    // New York is UTC-5 (EST) or UTC-4 (EDT) - we'll use UTC-5 for simplicity
+                    const utcDateTime = new Date(nyDateTime.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours
+                    utcTime = utcDateTime.toISOString();
+                } else {
+                    // For other timezones, use the browser's timezone conversion
+                    const userDateTime = new Date(scheduleDateTime);
+                    utcTime = userDateTime.toISOString();
+                }
+
                 const { data, error } = await supabase
                     .from('schedules')
                     .insert([{
                         user_email: 'insparisk-admin', // Fixed user identifier
                         agent_type: formData.agentType,
-                        schedule_time: `${formData.scheduleDate}T${formData.scheduleTime}:00`,
-                        timezone: formData.timezone,
+                        schedule_time: utcTime,
+                        timezone: userTimezone,
                         is_recurring: formData.isRecurring,
                         recurring_pattern: formData.recurringPattern,
                         webhook_url: formData.webhookUrl,
