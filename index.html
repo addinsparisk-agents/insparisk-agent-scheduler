@@ -626,11 +626,11 @@
                 // Convert New York time to UTC for storage
                 let utcTime;
                 if (userTimezone === 'America/New_York') {
-                    // Create a date object assuming the time is in New York timezone
+                    // For New York timezone, we need to convert 9:00 AM NY to 1:00 PM UTC
+                    // Create a date object and manually add 4 hours (NY is UTC-4 in EDT, UTC-5 in EST)
                     const nyDateTime = new Date(scheduleDateTime);
-                    // Convert to UTC by adding the timezone offset
-                    // New York is UTC-5 (EST) or UTC-4 (EDT) - we'll use UTC-5 for simplicity
-                    const utcDateTime = new Date(nyDateTime.getTime() + (5 * 60 * 60 * 1000)); // Add 5 hours
+                    // Add 4 hours to convert NY time to UTC (assuming EDT)
+                    const utcDateTime = new Date(nyDateTime.getTime() + (4 * 60 * 60 * 1000));
                     utcTime = utcDateTime.toISOString();
                 } else {
                     // For other timezones, use the browser's timezone conversion
