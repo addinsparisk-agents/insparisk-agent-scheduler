@@ -274,6 +274,35 @@
             align-items: center;
         }
 
+        .schedule-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        .delete-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .schedule-info h4 {
             color: #1e293b;
             margin-bottom: 5px;
@@ -690,8 +719,13 @@
                                 minute: '2-digit'
                             })}</p>` : ''}
                         </div>
-                        <div class="schedule-status status-${schedule.status}">
-                            ${schedule.status}
+                        <div class="schedule-actions">
+                            <div class="schedule-status status-${schedule.status}">
+                                ${schedule.status}
+                            </div>
+                            <button class="delete-btn" onclick="deleteSchedule('${schedule.id}')" title="Delete this schedule">
+                                🗑️ Delete
+                            </button>
                         </div>
                     </div>
                 `;
@@ -739,6 +773,33 @@
             selectedRecurring = 'none';
             selectedDays = [];
             initializeApp();
+        }
+
+        // Delete schedule function
+        async function deleteSchedule(scheduleId) {
+            if (!confirm('Are you sure you want to delete this schedule? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                showLoading(true);
+                
+                const { error } = await supabase
+                    .from('schedules')
+                    .delete()
+                    .eq('id', scheduleId);
+
+                if (error) throw error;
+
+                showSuccess('Schedule deleted successfully!');
+                loadExistingSchedules();
+                
+            } catch (error) {
+                console.error('Error deleting schedule:', error);
+                showError('Failed to delete schedule. Please try again.');
+            } finally {
+                showLoading(false);
+            }
         }
     </script>
 </body>
