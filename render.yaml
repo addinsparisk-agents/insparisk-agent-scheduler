@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: insparisk-agent-scheduler
+    env: static
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    plan: starter
+    region: oregon

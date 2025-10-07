@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insparisk Agent Scheduler</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .agent-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .agent-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.1);
+        }
+
+        .agent-card.selected {
+            border-color: #4f46e5;
+            background: linear-gradient(135deg, #eef2ff 0%, #f0f4ff 100%);
+        }
+
+        .agent-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .agent-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .agent-description {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .scheduling-section {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .recurring-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .recurring-option {
+            padding: 12px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .recurring-option:hover {
+            border-color: #4f46e5;
+            background: #f0f4ff;
+        }
+
+        .recurring-option.selected {
+            border-color: #4f46e5;
+            background: #4f46e5;
+            color: white;
+        }
+
+        .business-days-info {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .business-days-info h4 {
+            color: #065f46;
+            margin-bottom: 8px;
+        }
+
+        .business-days-info p {
+            color: #047857;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .schedules-list {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+        }
+
+        .schedule-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .schedule-info h4 {
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .schedule-info p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .schedule-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .agent-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent Scheduler</h1>
+            <p>Schedule your Insparisk agents with smart business day detection</p>
+        </div>
+
+        <div class="main-content">
+            <div class="success-message" id="successMessage"></div>
+            <div class="error-message" id="errorMessage"></div>
+
+            <!-- Agent Selection -->
+            <div class="scheduling-section">
+                <h2 class="section-title">Select Agent</h2>
+                <div class="agent-cards">
+                    <div class="agent-card" data-agent="accounts_receivable" data-webhook="https://insparisk.app.n8n.cloud/webhook/start-flow">
+                        <div class="agent-icon">💰</div>
+                        <h3 class="agent-title">Accounts Receivable</h3>
+                        <p class="agent-description">Automated accounts receivable management and follow-up system</p>
+                    </div>
+                    <div class="agent-card" data-agent="boiler_quote" data-webhook="https://insparisk.app.n8n.cloud/webhook/boiler">
+                        <div class="agent-icon">🔥</div>
+                        <h3 class="agent-title">Boiler Quote</h3>
+                        <p class="agent-description">Intelligent boiler quote generation and customer communication</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheduling Form -->
+            <div class="scheduling-section">
+                <h2 class="section-title">Schedule Settings</h2>
+                <form id="schedulingForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="userEmail">Email Address</label>
+                            <input type="email" id="userEmail" class="form-input" required placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="scheduleDate">Schedule Date</label>
+                            <input type="date" id="scheduleDate" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="scheduleTime">Schedule Time</label>
+                            <input type="time" id="scheduleTime" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="timezone">Timezone</label>
+                            <select id="timezone" class="form-select" required>
+                                <option value="America/New_York">Eastern Time (ET)</option>
+                                <option value="America/Chicago">Central Time (CT)</option>
+                                <option value="America/Denver">Mountain Time (MT)</option>
+                                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Recurring Schedule</label>
+                        <div class="recurring-options">
+                            <div class="recurring-option" data-pattern="none">One Time</div>
+                            <div class="recurring-option" data-pattern="daily">Daily</div>
+                            <div class="recurring-option" data-pattern="weekly">Weekly</div>
+                            <div class="recurring-option" data-pattern="monthly">Monthly</div>
+                        </div>
+                    </div>
+
+                    <div class="business-days-info">
+                        <h4>📅 Business Day Scheduling</h4>
+                        <p>Your schedule will automatically skip weekends and US federal holidays. Only business days will be used for recurring schedules.</p>
+                    </div>
+
+                    <button type="submit" class="btn" id="scheduleBtn">
+                        Schedule Agent
+                    </button>
+                </form>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading" id="loadingState">
+                <div class="spinner"></div>
+                <p>Creating your schedule...</p>
+            </div>
+
+            <!-- Existing Schedules -->
+            <div class="schedules-list">
+                <h2 class="section-title">Your Scheduled Agents</h2>
+                <div id="schedulesList">
+                    <!-- Schedules will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://vxhmqlavlukdsfcqnllu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4aG1xbGF2bHVrZHNmY3FubGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxMTY5NTQsImV4cCI6MjA2NDY5Mjk1NH0.qT-r7diyeLkSWsE5AgyYQjHg0OFTVK5gu0Cv3Ny37LI';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Global variables
+        let selectedAgent = null;
+        let selectedRecurring = 'none';
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+            loadExistingSchedules();
+        });
+
+        function initializeApp() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('scheduleDate').value = today;
+            
+            // Set default time to 9:00 AM
+            document.getElementById('scheduleTime').value = '09:00';
+        }
+
+        function setupEventListeners() {
+            // Agent selection
+            document.querySelectorAll('.agent-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedAgent = {
+                        type: this.dataset.agent,
+                        webhook: this.dataset.webhook
+                    };
+                });
+            });
+
+            // Recurring options
+            document.querySelectorAll('.recurring-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.recurring-option').forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedRecurring = this.dataset.pattern;
+                });
+            });
+
+            // Form submission
+            document.getElementById('schedulingForm').addEventListener('submit', handleFormSubmit);
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (!selectedAgent) {
+                showError('Please select an agent first');
+                return;
+            }
+
+            const formData = {
+                userEmail: document.getElementById('userEmail').value,
+                scheduleDate: document.getElementById('scheduleDate').value,
+                scheduleTime: document.getElementById('scheduleTime').value,
+                timezone: document.getElementById('timezone').value,
+                agentType: selectedAgent.type,
+                webhookUrl: selectedAgent.webhook,
+                isRecurring: selectedRecurring !== 'none',
+                recurringPattern: selectedRecurring === 'none' ? null : selectedRecurring
+            };
+
+            try {
+                showLoading(true);
+                
+                // Create schedule in database
+                const { data, error } = await supabase
+                    .from('schedules')
+                    .insert([{
+                        user_email: formData.userEmail,
+                        agent_type: formData.agentType,
+                        schedule_time: `${formData.scheduleDate}T${formData.scheduleTime}:00`,
+                        timezone: formData.timezone,
+                        is_recurring: formData.isRecurring,
+                        recurring_pattern: formData.recurringPattern,
+                        webhook_url: formData.webhookUrl
+                    }])
+                    .select();
+
+                if (error) throw error;
+
+                showSuccess('Schedule created successfully!');
+                loadExistingSchedules();
+                resetForm();
+                
+            } catch (error) {
+                console.error('Error creating schedule:', error);
+                showError('Failed to create schedule. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadExistingSchedules() {
+            try {
+                const { data, error } = await supabase
+                    .from('schedules')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                displaySchedules(data || []);
+            } catch (error) {
+                console.error('Error loading schedules:', error);
+            }
+        }
+
+        function displaySchedules(schedules) {
+            const container = document.getElementById('schedulesList');
+            
+            if (schedules.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">No schedules found. Create your first schedule above!</p>';
+                return;
+            }
+
+            container.innerHTML = schedules.map(schedule => {
+                const scheduleDate = new Date(schedule.schedule_time);
+                const nextTrigger = schedule.next_trigger_time ? new Date(schedule.next_trigger_time) : null;
+                
+                return `
+                    <div class="schedule-item">
+                        <div class="schedule-info">
+                            <h4>${getAgentDisplayName(schedule.agent_type)}</h4>
+                            <p><strong>Email:</strong> ${schedule.user_email}</p>
+                            <p><strong>Scheduled:</strong> ${scheduleDate.toLocaleString('en-US', { 
+                                timeZone: schedule.timezone,
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</p>
+                            ${schedule.is_recurring ? `<p><strong>Recurring:</strong> ${schedule.recurring_pattern}</p>` : ''}
+                            ${nextTrigger ? `<p><strong>Next Run:</strong> ${nextTrigger.toLocaleString('en-US', { 
+                                timeZone: schedule.timezone,
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</p>` : ''}
+                        </div>
+                        <div class="schedule-status status-${schedule.status}">
+                            ${schedule.status}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getAgentDisplayName(agentType) {
+            const names = {
+                'accounts_receivable': '💰 Accounts Receivable',
+                'boiler_quote': '🔥 Boiler Quote'
+            };
+            return names[agentType] || agentType;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingState').style.display = show ? 'block' : 'none';
+            document.getElementById('scheduleBtn').disabled = show;
+        }
+
+        function showSuccess(message) {
+            const successEl = document.getElementById('successMessage');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            setTimeout(() => {
+                successEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function resetForm() {
+            document.getElementById('schedulingForm').reset();
+            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('.recurring-option').forEach(o => o.classList.remove('selected'));
+            selectedAgent = null;
+            selectedRecurring = 'none';
+            initializeApp();
+        }
+    </script>
+</body>
+</html>
