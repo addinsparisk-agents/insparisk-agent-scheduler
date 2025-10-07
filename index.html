@@ -401,8 +401,8 @@
                 <form id="schedulingForm">
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label" for="userEmail">Email Address</label>
-                            <input type="email" id="userEmail" class="form-input" required placeholder="your@email.com">
+                            <label class="form-label" for="userPassword">Access Password</label>
+                            <input type="password" id="userPassword" class="form-input" required placeholder="Enter access password">
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="scheduleDate">Schedule Date</label>
@@ -450,8 +450,8 @@
                     </div>
 
                     <div class="business-days-info">
-                        <h4>📅 Smart Scheduling</h4>
-                        <p>For weekly schedules, you can select specific days. The system will automatically skip US federal holidays, but you can choose to include weekends if needed.</p>
+                        <h4>🔐 Access Control</h4>
+                        <p>Only authorized users with the correct password can create schedules. For weekly schedules, you can select specific days. The system will automatically skip US federal holidays, but you can choose to include weekends if needed.</p>
                     </div>
 
                     <button type="submit" class="btn" id="scheduleBtn">
@@ -568,8 +568,15 @@
                 return;
             }
 
+            // Check password authentication
+            const password = document.getElementById('userPassword').value;
+            if (password !== 'insparisk#1') {
+                showError('Invalid access password. Please contact administrator.');
+                return;
+            }
+
             const formData = {
-                userEmail: document.getElementById('userEmail').value,
+                userPassword: password,
                 scheduleDate: document.getElementById('scheduleDate').value,
                 scheduleTime: document.getElementById('scheduleTime').value,
                 timezone: document.getElementById('timezone').value,
@@ -587,7 +594,7 @@
                 const { data, error } = await supabase
                     .from('schedules')
                     .insert([{
-                        user_email: formData.userEmail,
+                        user_email: 'insparisk-admin', // Fixed user identifier
                         agent_type: formData.agentType,
                         schedule_time: `${formData.scheduleDate}T${formData.scheduleTime}:00`,
                         timezone: formData.timezone,
@@ -643,7 +650,7 @@
                     <div class="schedule-item">
                         <div class="schedule-info">
                             <h4>${getAgentDisplayName(schedule.agent_type)}</h4>
-                            <p><strong>Email:</strong> ${schedule.user_email}</p>
+                            <p><strong>User:</strong> ${schedule.user_email}</p>
                             <p><strong>Scheduled:</strong> ${scheduleDate.toLocaleString('en-US', { 
                                 timeZone: schedule.timezone,
                                 weekday: 'long',
