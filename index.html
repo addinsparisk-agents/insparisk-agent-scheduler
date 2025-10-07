@@ -175,6 +175,45 @@
             color: white;
         }
 
+        .day-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .day-option {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .day-option:hover {
+            border-color: #4f46e5;
+            background: #f0f4ff;
+        }
+
+        .day-option.selected {
+            border-color: #4f46e5;
+            background: #4f46e5;
+            color: white;
+        }
+
+        .day-option.weekend {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        .day-option.weekend.selected {
+            background: #f59e0b;
+            color: white;
+        }
+
         .business-days-info {
             background: #ecfdf5;
             border: 1px solid #a7f3d0;
@@ -397,9 +436,22 @@
                         </div>
                     </div>
 
+                    <div class="form-group" id="daySelection" style="display: none;">
+                        <label class="form-label">Select Days of the Week</label>
+                        <div class="day-options">
+                            <div class="day-option" data-day="monday">Monday</div>
+                            <div class="day-option" data-day="tuesday">Tuesday</div>
+                            <div class="day-option" data-day="wednesday">Wednesday</div>
+                            <div class="day-option" data-day="thursday">Thursday</div>
+                            <div class="day-option" data-day="friday">Friday</div>
+                            <div class="day-option" data-day="saturday">Saturday</div>
+                            <div class="day-option" data-day="sunday">Sunday</div>
+                        </div>
+                    </div>
+
                     <div class="business-days-info">
-                        <h4>📅 Business Day Scheduling</h4>
-                        <p>Your schedule will automatically skip weekends and US federal holidays. Only business days will be used for recurring schedules.</p>
+                        <h4>📅 Smart Scheduling</h4>
+                        <p>For weekly schedules, you can select specific days. The system will automatically skip US federal holidays, but you can choose to include weekends if needed.</p>
                     </div>
 
                     <button type="submit" class="btn" id="scheduleBtn">
@@ -434,6 +486,7 @@
         // Global variables
         let selectedAgent = null;
         let selectedRecurring = 'none';
+        let selectedDays = [];
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
@@ -470,6 +523,36 @@
                     document.querySelectorAll('.recurring-option').forEach(o => o.classList.remove('selected'));
                     this.classList.add('selected');
                     selectedRecurring = this.dataset.pattern;
+                    
+                    // Show/hide day selection based on pattern
+                    const daySelection = document.getElementById('daySelection');
+                    if (selectedRecurring === 'weekly') {
+                        daySelection.style.display = 'block';
+                    } else {
+                        daySelection.style.display = 'none';
+                        selectedDays = [];
+                        document.querySelectorAll('.day-option').forEach(d => d.classList.remove('selected'));
+                    }
+                });
+            });
+
+            // Day selection
+            document.querySelectorAll('.day-option').forEach(option => {
+                const day = option.dataset.day;
+                
+                // Add weekend styling
+                if (day === 'saturday' || day === 'sunday') {
+                    option.classList.add('weekend');
+                }
+                
+                option.addEventListener('click', function() {
+                    if (this.classList.contains('selected')) {
+                        this.classList.remove('selected');
+                        selectedDays = selectedDays.filter(d => d !== day);
+                    } else {
+                        this.classList.add('selected');
+                        selectedDays.push(day);
+                    }
                 });
             });
 
@@ -493,7 +576,8 @@
                 agentType: selectedAgent.type,
                 webhookUrl: selectedAgent.webhook,
                 isRecurring: selectedRecurring !== 'none',
-                recurringPattern: selectedRecurring === 'none' ? null : selectedRecurring
+                recurringPattern: selectedRecurring === 'none' ? null : selectedRecurring,
+                selectedDays: selectedDays
             };
 
             try {
@@ -509,7 +593,8 @@
                         timezone: formData.timezone,
                         is_recurring: formData.isRecurring,
                         recurring_pattern: formData.recurringPattern,
-                        webhook_url: formData.webhookUrl
+                        webhook_url: formData.webhookUrl,
+                        selected_days: formData.selectedDays.length > 0 ? formData.selectedDays : null
                     }])
                     .select();
 
@@ -569,6 +654,7 @@
                                 minute: '2-digit'
                             })}</p>
                             ${schedule.is_recurring ? `<p><strong>Recurring:</strong> ${schedule.recurring_pattern}</p>` : ''}
+                            ${schedule.selected_days && schedule.selected_days.length > 0 ? `<p><strong>Days:</strong> ${schedule.selected_days.join(', ')}</p>` : ''}
                             ${nextTrigger ? `<p><strong>Next Run:</strong> ${nextTrigger.toLocaleString('en-US', { 
                                 timeZone: schedule.timezone,
                                 weekday: 'long',
@@ -622,8 +708,11 @@
             document.getElementById('schedulingForm').reset();
             document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
             document.querySelectorAll('.recurring-option').forEach(o => o.classList.remove('selected'));
+            document.querySelectorAll('.day-option').forEach(d => d.classList.remove('selected'));
+            document.getElementById('daySelection').style.display = 'none';
             selectedAgent = null;
             selectedRecurring = 'none';
+            selectedDays = [];
             initializeApp();
         }
     </script>
