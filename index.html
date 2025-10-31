@@ -623,20 +623,39 @@
                 const scheduleDateTime = `${formData.scheduleDate}T${formData.scheduleTime}:00`;
                 const userTimezone = formData.timezone || 'America/New_York';
                 
-                // Convert New York time to UTC for storage
+                // Parse the date/time as if it's in the user's selected timezone
+                // We need to convert the user's local time to UTC properly
                 let utcTime;
+                
+                // Create a date string that will be interpreted correctly
+                // Format: YYYY-MM-DDTHH:mm:ss
+                const [datePart, timePart] = scheduleDateTime.split('T');
+                const [year, month, day] = datePart.split('-').map(Number);
+                const [hour, minute] = timePart.split(':').map(Number);
+                
+                // Create a date in UTC with the user's intended time
+                // Then we'll adjust based on their timezone offset
+                const tempDate = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+                
+                // Get the timezone offset for the selected timezone
+                // For America/New_York (Eastern Time): UTC-5 (EST) or UTC-4 (EDT)
+                // We need to ADD the offset to convert local time to UTC
+                let timezoneOffsetHours = 0;
                 if (userTimezone === 'America/New_York') {
-                    // For New York timezone, we need to convert 9:00 AM NY to 1:00 PM UTC
-                    // Create a date object and manually add 4 hours (NY is UTC-4 in EDT, UTC-5 in EST)
-                    const nyDateTime = new Date(scheduleDateTime);
-                    // Add 4 hours to convert NY time to UTC (assuming EDT)
-                    const utcDateTime = new Date(nyDateTime.getTime() + (4 * 60 * 60 * 1000));
-                    utcTime = utcDateTime.toISOString();
-                } else {
-                    // For other timezones, use the browser's timezone conversion
-                    const userDateTime = new Date(scheduleDateTime);
-                    utcTime = userDateTime.toISOString();
+                    // Eastern Time is UTC-5 (EST) or UTC-4 (EDT)
+                    // In October 2025, it's EDT (UTC-4), so we add 4 hours
+                    timezoneOffsetHours = 4; // EDT offset
+                } else if (userTimezone === 'America/Chicago') {
+                    timezoneOffsetHours = 5; // CDT offset
+                } else if (userTimezone === 'America/Denver') {
+                    timezoneOffsetHours = 6; // MDT offset
+                } else if (userTimezone === 'America/Los_Angeles') {
+                    timezoneOffsetHours = 7; // PDT offset
                 }
+                
+                // Add the timezone offset to convert to UTC
+                const utcDate = new Date(tempDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
+                utcTime = utcDate.toISOString();
 
                 // Calculate next trigger time on the client side to avoid database trigger timeout
                 let nextTriggerTime = utcTime;
