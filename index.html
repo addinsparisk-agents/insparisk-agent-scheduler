@@ -648,41 +648,39 @@
                         'thursday': 4, 'friday': 5, 'saturday': 6
                     };
                     
-                    const now = new Date();
+                    const nowUTC = new Date(); // Current time in UTC
                     const scheduleDate = new Date(utcTime);
-                    const scheduleTimeOfDay = scheduleDate.getUTCHours() * 60 + scheduleDate.getUTCMinutes();
+                    const targetHour = scheduleDate.getUTCHours();
+                    const targetMinute = scheduleDate.getUTCMinutes();
                     
                     // Convert selected days to day numbers
                     const targetDays = formData.selectedDays.map(day => dayMap[day.toLowerCase()]).sort((a, b) => a - b);
                     
                     // Find the next occurrence
-                    let nextDate = new Date(now);
                     let found = false;
                     
-                    // Check up to 7 days ahead
-                    for (let i = 0; i < 7; i++) {
-                        const checkDate = new Date(now);
-                        checkDate.setDate(now.getDate() + i);
-                        const dayOfWeek = checkDate.getDay();
+                    // Check up to 14 days ahead to ensure we find a match
+                    for (let i = 0; i <= 14; i++) {
+                        const checkDate = new Date(nowUTC);
+                        checkDate.setUTCDate(nowUTC.getUTCDate() + i);
+                        checkDate.setUTCHours(targetHour);
+                        checkDate.setUTCMinutes(targetMinute);
+                        checkDate.setUTCSeconds(0);
+                        checkDate.setUTCMilliseconds(0);
                         
-                        if (targetDays.includes(dayOfWeek)) {
-                            // Set the time to the scheduled time
-                            checkDate.setUTCHours(scheduleDate.getUTCHours());
-                            checkDate.setUTCMinutes(scheduleDate.getUTCMinutes());
-                            checkDate.setUTCSeconds(0);
-                            checkDate.setUTCMilliseconds(0);
-                            
-                            // If this is today, make sure it's in the future
-                            if (checkDate > now) {
-                                nextDate = checkDate;
-                                found = true;
-                                break;
-                            }
+                        const dayOfWeek = checkDate.getUTCDay();
+                        
+                        // Check if this day matches our target days AND is in the future
+                        if (targetDays.includes(dayOfWeek) && checkDate > nowUTC) {
+                            nextTriggerTime = checkDate.toISOString();
+                            found = true;
+                            break;
                         }
                     }
                     
-                    if (found) {
-                        nextTriggerTime = nextDate.toISOString();
+                    if (!found) {
+                        // Fallback: use the original schedule time
+                        nextTriggerTime = utcTime;
                     }
                 } else if (formData.isRecurring) {
                     // For daily/weekly without specific days, use the schedule time if it's in the future
@@ -693,14 +691,14 @@
                         // If schedule time is in the past, calculate next occurrence
                         if (formData.recurringPattern === 'daily') {
                             const tomorrow = new Date(now);
-                            tomorrow.setDate(tomorrow.getDate() + 1);
+                            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
                             tomorrow.setUTCHours(scheduleDate.getUTCHours());
                             tomorrow.setUTCMinutes(scheduleDate.getUTCMinutes());
                             tomorrow.setUTCSeconds(0);
                             nextTriggerTime = tomorrow.toISOString();
                         } else if (formData.recurringPattern === 'weekly') {
                             const nextWeek = new Date(scheduleDate);
-                            nextWeek.setDate(nextWeek.getDate() + 7);
+                            nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
                             nextTriggerTime = nextWeek.toISOString();
                         }
                     }
