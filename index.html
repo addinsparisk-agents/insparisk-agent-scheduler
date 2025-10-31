@@ -638,6 +638,9 @@
                     utcTime = userDateTime.toISOString();
                 }
 
+                // Calculate next trigger time on the client side to avoid database trigger timeout
+                const nextTriggerTime = utcTime; // For first run, use the scheduled time
+                
                 const { data, error } = await supabase
                     .from('schedules')
                     .insert([{
@@ -648,7 +651,9 @@
                         is_recurring: formData.isRecurring,
                         recurring_pattern: formData.recurringPattern,
                         webhook_url: formData.webhookUrl,
-                        selected_days: formData.selectedDays.length > 0 ? formData.selectedDays : null
+                        selected_days: formData.selectedDays.length > 0 ? formData.selectedDays : null,
+                        next_trigger_time: nextTriggerTime,
+                        status: 'pending'
                     }])
                     .select();
 
